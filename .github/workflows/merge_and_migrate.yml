@@ -21,13 +21,13 @@ jobs:
   migrate_to_target:
     name: Migration to Target
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     env:
       SOURCE_HOST_URL: ${{ secrets.SOURCE_HOST_URL }}
       SOURCE_TOKEN: ${{ secrets.SOURCE_TOKEN }}
       TARGET_HOST_URL: ${{ secrets.TARGET_HOST_URL }}
       TARGET_TOKEN: ${{ secrets.TARGET_TOKEN }}
       
-    if: github.event.pull_request.merged == true
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -99,3 +99,12 @@ jobs:
           else
             promote-build-solution --publish_build_app $DEPLOY_FLAG $REBUILD_FLAG
           fi
+
+      - name: Create or Update Tag for Release
+        if: success()
+        run: |
+          git config --global user.email "no-reply@github.com"
+          git config --global user.name "GitHub Actions"
+          APP_RELEASE_VERSION=$(jq -r '.version' app_details.json)
+          git tag -f -a "v${APP_RELEASE_VERSION}" -m "Release version ${APP_RELEASE_VERSION}"
+          git push origin "v${APP_RELEASE_VERSION}" --force
